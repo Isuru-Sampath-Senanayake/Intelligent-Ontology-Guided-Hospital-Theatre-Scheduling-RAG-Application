@@ -7,6 +7,7 @@ import streamlit as st
 from app.services.scheduling_service import find_slot_asap, validate_fixed_slot
 from app.services.ontology_service import OntologyConfig, OntologyService
 from app.services.rag_service import RagService, build_chunks
+from app.services.llm_service import OllamaClient, OllamaConfig
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 SURGEONS_FILE = DATA_DIR / "surgeons.json"
@@ -19,6 +20,7 @@ ONTOLOGY_PATH = Path(__file__).resolve().parents[2] / "ontology" / "hospital.owl
 BASE_IRI = "http://www.semanticweb.org/hospital"
 
 ontology = OntologyService(OntologyConfig(ontology_path=ONTOLOGY_PATH, base_iri=BASE_IRI))
+ollama = OllamaClient(OllamaConfig(model="phi3:mini"))
 
 
 def load_json(path: Path):
@@ -32,6 +34,37 @@ def save_json(path: Path, payload):
 def parse_dt(date_value, time_str: str) -> datetime:
     hh, mm = time_str.split(":")
     return datetime(date_value.year, date_value.month, date_value.day, int(hh), int(mm))
+
+
+def build_grounded_prompt(
+    user_request: str,
+    decision_text: str,
+    reasons: list[str],
+    evidence_lines: list[str],
+) -> str:
+    reasons_block = "\n".join([f"- {r}" for r in reasons]) if reasons else "- None"
+    evidence_block = "\n".join([f"- {e}" for e in evidence_lines]) if evidence_lines else "- None"
+
+    return f"""You are a hospital scheduling assistant. You must only use the Evidence section. Do not invent facts.
+If information is missing, say "Not available in evidence".
+
+Return exactly in this format:
+Final decision:
+Why chosen:
+Evidence used:
+
+User request:
+{user_request}
+
+System decision:
+{decision_text}
+
+System reasons:
+{reasons_block}
+
+Evidence:
+{evidence_block}
+"""
 
 
 st.set_page_config(page_title="Create Booking", layout="wide")
@@ -83,7 +116,7 @@ if submit:
     surgeon = surgeon_by_name[surgeon_name]
     theatre = theatre_by_name[theatre_name]
 
-    reasons = []
+    reasons: list[str] = []
 
     if not ontology.surgeon_can_perform(surgeon["surgeon_id"], operation["operation_id"]):
         reasons.append("Surgeon is not qualified for the selected operation (ontology rule).")
@@ -127,26 +160,30 @@ if submit:
         if not decision.approved:
             reasons.extend(decision.reasons)
 
-    # Build RAG evidence (after we know the outcome)
+    # RAG evidence
     rag = RagService()
     chunks = build_chunks(surgeons, patients, operations, theatres, bookings)
     rag.build(chunks)
 
-    query_text = f"{patient['name']} {operation['name']} {surgeon['name']} {theatre['name']} {mode}"
-    results = rag.search(query_text, k=6)
+    user_request = f"Schedule {patient['name']} for {operation['name']} with {surgeon['name']} in {theatre['name']} ({mode})"
+    results = rag.search(user_request, k=6)
 
     st.subheader("Retrieved Evidence")
+    evidence_lines: list[str] = []
     if not results:
         st.info("No evidence retrieved.")
     else:
         for c, s in results:
-            st.write(f"- {c.chunk_id} (score {s:.3f}): {c.text}")
+            line = f"{c.chunk_id} (score {s:.3f}): {c.text}"
+            evidence_lines.append(line)
+            st.write(f"- {line}")
 
     st.subheader("Decision")
     if reasons:
         st.error("Rejected")
         for r in reasons:
             st.write(f"- {r}")
+        decision_text = "Rejected"
     else:
         booking = {
             "booking_id": f"B{len(bookings) + 1:04d}",
@@ -167,3 +204,18 @@ if submit:
 
         st.success("Approved and saved to bookings.json")
         st.json(booking)
+        decision_text = f"Approved. Scheduled from {booking['start_time']} to {booking['end_time']}."
+
+    st.subheader("AI Explanation (Ollama)")
+    prompt = build_grounded_prompt(
+        user_request=user_request,
+        decision_text=decision_text,
+        reasons=reasons,
+        evidence_lines=evidence_lines,
+    )
+
+    try:
+        explanation = ollama.generate(prompt)
+        st.text(explanation)
+    except Exception as e:
+        st.warning(f"Ollama explanation unavailable: {e}")
