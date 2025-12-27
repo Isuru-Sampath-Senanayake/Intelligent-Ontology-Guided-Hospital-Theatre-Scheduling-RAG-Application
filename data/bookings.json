@@ -11,5 +11,44 @@
     "theatre_name": "Theatre 1",
     "start_time": "2025-12-28T08:30",
     "end_time": "2025-12-28T10:30"
+  },
+  {
+    "booking_id": "B0002",
+    "patient_id": "P003",
+    "patient_name": "Patient K",
+    "operation_id": "OP001",
+    "operation_name": "Bone Repair",
+    "surgeon_id": "S001",
+    "surgeon_name": "Dr A",
+    "theatre_id": "T001",
+    "theatre_name": "Theatre 1",
+    "start_time": "2025-12-29T08:00",
+    "end_time": "2025-12-29T10:00"
+  },
+  {
+    "booking_id": "B0003",
+    "patient_id": "P002",
+    "patient_name": "Patient Y",
+    "operation_id": "OP001",
+    "operation_name": "Bone Repair",
+    "surgeon_id": "S001",
+    "surgeon_name": "Dr A",
+    "theatre_id": "T001",
+    "theatre_name": "Theatre 1",
+    "start_time": "2025-12-29T10:00",
+    "end_time": "2025-12-29T12:00"
+  },
+  {
+    "booking_id": "B0004",
+    "patient_id": "P001",
+    "patient_name": "Patient B",
+    "operation_id": "OP002",
+    "operation_name": "Appendectomy",
+    "surgeon_id": "S002",
+    "surgeon_name": "Dr C",
+    "theatre_id": "T002",
+    "theatre_name": "Theatre 2",
+    "start_time": "2025-12-29T10:00",
+    "end_time": "2025-12-29T11:30"
   }
 ]

@@ -47,29 +47,28 @@ TIME_OPTIONS = [
     "14:00", "14:30", "15:00", "15:30",
 ]
 
-with st.form("booking_form"):
-    col1, col2, col3 = st.columns(3)
+col1, col2, col3 = st.columns(3)
 
-    with col1:
-        patient_name = st.selectbox("Patient", sorted(patient_by_name.keys()))
-        operation_name = st.selectbox("Operation", sorted(operation_by_name.keys()))
+with col1:
+    patient_name = st.selectbox("Patient", sorted(patient_by_name.keys()))
+    operation_name = st.selectbox("Operation", sorted(operation_by_name.keys()))
 
-    with col2:
-        surgeon_name = st.selectbox("Preferred Surgeon", sorted(surgeon_by_name.keys()))
-        theatre_name = st.selectbox("Preferred Theatre", sorted(theatre_by_name.keys()))
+with col2:
+    surgeon_name = st.selectbox("Preferred Surgeon", sorted(surgeon_by_name.keys()))
+    theatre_name = st.selectbox("Preferred Theatre", sorted(theatre_by_name.keys()))
 
-    with col3:
-        mode = st.radio("Scheduling mode", ["Fixed time", "ASAP within range"], horizontal=True)
-        booking_date = st.date_input("Start date", value=datetime.now().date() + timedelta(days=1))
+with col3:
+    mode = st.radio("Scheduling mode", ["Fixed time", "ASAP within range"], horizontal=True)
+    booking_date = st.date_input("Start date", value=datetime.now().date() + timedelta(days=1))
 
-        if mode == "Fixed time":
-            start_time = st.selectbox("Start time", TIME_OPTIONS)
-            days_range = None
-        else:
-            start_time = None
-            days_range = st.selectbox("Search window (days)", [3, 7, 14], index=2)
+    if mode == "Fixed time":
+        start_time = st.selectbox("Start time", TIME_OPTIONS)
+        days_range = None
+    else:
+        start_time = None
+        days_range = st.selectbox("Search window (days)", [3, 7, 14], index=2)
 
-    submit = st.form_submit_button("Check and Schedule")
+submit = st.button("Check and Schedule", type="primary")
 
 if submit:
     patient = patient_by_name[patient_name]
@@ -79,18 +78,15 @@ if submit:
 
     reasons = []
 
-    # Qualification check (matches your data now)
     if operation["operation_id"] not in surgeon.get("can_perform", []):
         reasons.append("Surgeon is not qualified for the selected operation.")
 
-    # Equipment check
     required_eq = set(operation.get("required_equipment", []))
     available_eq = set(theatre.get("equipment", []))
     if not required_eq.issubset(available_eq):
         missing = sorted(required_eq - available_eq)
         reasons.append(f"Theatre is missing required equipment: {', '.join(missing)}")
 
-    # Theatre type compatibility (simple rule for now)
     if theatre.get("type") != operation.get("required_specialty"):
         reasons.append("Theatre type is not compatible with the operation specialty.")
 
