@@ -5,5 +5,19 @@
     "required_specialty": "Orthopedic",
     "required_equipment": ["OrthoKit", "XRayMachine"],
     "duration_minutes": 120
+  },
+  {
+    "operation_id": "OP002",
+    "name": "Appendectomy",
+    "required_specialty": "GeneralSurgery",
+    "required_equipment": ["LaparoscopyKit"],
+    "duration_minutes": 90
+  },
+  {
+    "operation_id": "OP003",
+    "name": "Arthroscopy",
+    "required_specialty": "Orthopedic",
+    "required_equipment": ["ArthroscopyKit"],
+    "duration_minutes": 60
   }
 ]
