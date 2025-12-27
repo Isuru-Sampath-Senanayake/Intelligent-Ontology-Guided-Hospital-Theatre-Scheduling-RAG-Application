@@ -1,0 +1,9 @@
+[
+  {
+    "operation_id": "OP001",
+    "name": "Bone Repair",
+    "required_specialty": "Orthopedic",
+    "required_equipment": ["OrthoKit", "XRayMachine"],
+    "duration_minutes": 120
+  }
+]

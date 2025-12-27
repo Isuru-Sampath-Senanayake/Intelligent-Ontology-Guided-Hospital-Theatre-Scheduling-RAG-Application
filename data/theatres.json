@@ -1,0 +1,15 @@
+[
+  {
+    "theatre_id": "T001",
+    "name": "Theatre 1",
+    "type": "Orthopedic",
+    "equipment": ["OrthoKit", "XRayMachine"],
+    "availability": [
+      {"day": "Mon", "start": "08:00", "end": "16:00"},
+      {"day": "Tue", "start": "08:00", "end": "16:00"},
+      {"day": "Wed", "start": "08:00", "end": "16:00"},
+      {"day": "Thu", "start": "08:00", "end": "16:00"},
+      {"day": "Fri", "start": "08:00", "end": "16:00"}
+    ]
+  }
+]
