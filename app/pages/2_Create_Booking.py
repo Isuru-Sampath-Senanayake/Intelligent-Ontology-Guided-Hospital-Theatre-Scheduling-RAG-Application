@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import streamlit as st
 
 from app.services.scheduling_service import find_slot_asap, validate_fixed_slot
+from app.services.ontology_service import OntologyConfig, OntologyService
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 SURGEONS_FILE = DATA_DIR / "surgeons.json"
@@ -12,6 +13,11 @@ PATIENTS_FILE = DATA_DIR / "patients.json"
 OPERATIONS_FILE = DATA_DIR / "operations.json"
 THEATRES_FILE = DATA_DIR / "theatres.json"
 BOOKINGS_FILE = DATA_DIR / "bookings.json"
+
+ONTOLOGY_PATH = Path(__file__).resolve().parents[2] / "ontology" / "hospital.owl"
+BASE_IRI = "http://www.semanticweb.org/hospital"
+
+ontology = OntologyService(OntologyConfig(ontology_path=ONTOLOGY_PATH, base_iri=BASE_IRI))
 
 
 def load_json(path: Path):
@@ -78,15 +84,18 @@ if submit:
 
     reasons = []
 
-    if operation["operation_id"] not in surgeon.get("can_perform", []):
-        reasons.append("Surgeon is not qualified for the selected operation.")
+    # Ontology driven qualification
+    if not ontology.surgeon_can_perform(surgeon["surgeon_id"], operation["operation_id"]):
+        reasons.append("Surgeon is not qualified for the selected operation (ontology rule).")
 
-    required_eq = set(operation.get("required_equipment", []))
+    # Ontology driven equipment requirements
+    required_eq = set(ontology.required_equipment(operation["operation_id"]))
     available_eq = set(theatre.get("equipment", []))
     if not required_eq.issubset(available_eq):
         missing = sorted(required_eq - available_eq)
         reasons.append(f"Theatre is missing required equipment: {', '.join(missing)}")
 
+    # Simple theatre compatibility check for now
     if theatre.get("type") != operation.get("required_specialty"):
         reasons.append("Theatre type is not compatible with the operation specialty.")
 
