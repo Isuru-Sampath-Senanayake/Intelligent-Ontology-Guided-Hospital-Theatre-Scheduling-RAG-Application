@@ -1,1 +1,15 @@
-[]
+[
+  {
+    "booking_id": "B0001",
+    "patient_id": "P001",
+    "patient_name": "Patient B",
+    "operation_id": "OP001",
+    "operation_name": "Bone Repair",
+    "surgeon_id": "S001",
+    "surgeon_name": "Dr A",
+    "theatre_id": "T001",
+    "theatre_name": "Theatre 1",
+    "start_time": "2025-12-28T08:30",
+    "end_time": "2025-12-28T10:30"
+  }
+]
