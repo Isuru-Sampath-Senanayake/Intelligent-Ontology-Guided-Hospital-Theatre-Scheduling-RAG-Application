@@ -6,6 +6,7 @@ import streamlit as st
 
 from app.services.scheduling_service import find_slot_asap, validate_fixed_slot
 from app.services.ontology_service import OntologyConfig, OntologyService
+from app.services.rag_service import RagService, build_chunks
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 SURGEONS_FILE = DATA_DIR / "surgeons.json"
@@ -84,24 +85,22 @@ if submit:
 
     reasons = []
 
-    # Ontology driven qualification
     if not ontology.surgeon_can_perform(surgeon["surgeon_id"], operation["operation_id"]):
         reasons.append("Surgeon is not qualified for the selected operation (ontology rule).")
 
-    # Ontology driven equipment requirements
     required_eq = set(ontology.required_equipment(operation["operation_id"]))
     available_eq = set(theatre.get("equipment", []))
     if not required_eq.issubset(available_eq):
         missing = sorted(required_eq - available_eq)
         reasons.append(f"Theatre is missing required equipment: {', '.join(missing)}")
 
-    # Simple theatre compatibility check for now
     if theatre.get("type") != operation.get("required_specialty"):
         reasons.append("Theatre type is not compatible with the operation specialty.")
 
     duration_minutes = int(operation["duration_minutes"])
     step_minutes = 30
 
+    decision = None
     if not reasons:
         if mode == "Fixed time":
             start_dt = parse_dt(booking_date, start_time)
@@ -128,6 +127,22 @@ if submit:
         if not decision.approved:
             reasons.extend(decision.reasons)
 
+    # Build RAG evidence (after we know the outcome)
+    rag = RagService()
+    chunks = build_chunks(surgeons, patients, operations, theatres, bookings)
+    rag.build(chunks)
+
+    query_text = f"{patient['name']} {operation['name']} {surgeon['name']} {theatre['name']} {mode}"
+    results = rag.search(query_text, k=6)
+
+    st.subheader("Retrieved Evidence")
+    if not results:
+        st.info("No evidence retrieved.")
+    else:
+        for c, s in results:
+            st.write(f"- {c.chunk_id} (score {s:.3f}): {c.text}")
+
+    st.subheader("Decision")
     if reasons:
         st.error("Rejected")
         for r in reasons:
