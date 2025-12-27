@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -25,7 +25,7 @@ class RagService:
         texts = [c.text for c in self._chunks]
         self._matrix = self._vectorizer.fit_transform(texts) if texts else None
 
-    def search(self, query: str, k: int = 5) -> List[Tuple[EvidenceChunk, float]]:
+    def search(self, query: str, k: int = 6) -> List[Tuple[EvidenceChunk, float]]:
         if not self._chunks or self._matrix is None:
             return []
 
@@ -43,8 +43,18 @@ def build_chunks(
     operations: List[Dict],
     theatres: List[Dict],
     bookings: List[Dict],
+    policies_text: Optional[str] = None,
 ) -> List[EvidenceChunk]:
     chunks: List[EvidenceChunk] = []
+
+    if policies_text and policies_text.strip():
+        chunks.append(
+            EvidenceChunk(
+                chunk_id="POLICY_RULES",
+                text=policies_text.strip(),
+                tags={"type": "policy"},
+            )
+        )
 
     for s in surgeons:
         chunks.append(
@@ -84,7 +94,8 @@ def build_chunks(
             )
         )
 
-    for b in bookings:
+    # Keep recent booking evidence only (prevents domination)
+    for b in bookings[-20:]:
         chunks.append(
             EvidenceChunk(
                 chunk_id=f"BOOKING_{b['booking_id']}",

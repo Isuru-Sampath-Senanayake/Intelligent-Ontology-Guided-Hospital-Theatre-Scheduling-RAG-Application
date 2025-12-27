@@ -15,6 +15,7 @@ PATIENTS_FILE = DATA_DIR / "patients.json"
 OPERATIONS_FILE = DATA_DIR / "operations.json"
 THEATRES_FILE = DATA_DIR / "theatres.json"
 BOOKINGS_FILE = DATA_DIR / "bookings.json"
+POLICIES_FILE = DATA_DIR / "policies.txt"
 
 ONTOLOGY_PATH = Path(__file__).resolve().parents[2] / "ontology" / "hospital.owl"
 BASE_IRI = "http://www.semanticweb.org/hospital"
@@ -75,6 +76,7 @@ patients = load_json(PATIENTS_FILE)
 operations = load_json(OPERATIONS_FILE)
 theatres = load_json(THEATRES_FILE)
 bookings = load_json(BOOKINGS_FILE)
+policies_text = POLICIES_FILE.read_text(encoding="utf-8") if POLICIES_FILE.exists() else ""
 
 surgeon_by_name = {s["name"]: s for s in surgeons}
 patient_by_name = {p["name"]: p for p in patients}
@@ -160,9 +162,9 @@ if submit:
         if not decision.approved:
             reasons.extend(decision.reasons)
 
-    # RAG evidence
+    # RAG evidence (includes policy)
     rag = RagService()
-    chunks = build_chunks(surgeons, patients, operations, theatres, bookings)
+    chunks = build_chunks(surgeons, patients, operations, theatres, bookings, policies_text=policies_text)
     rag.build(chunks)
 
     user_request = f"Schedule {patient['name']} for {operation['name']} with {surgeon['name']} in {theatre['name']} ({mode})"

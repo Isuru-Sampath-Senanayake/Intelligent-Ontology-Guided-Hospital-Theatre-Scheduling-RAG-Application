@@ -1,0 +1,16 @@
+Hospital Theatre Scheduling Rules (Policy Evidence)
+
+1. Surgeon Qualification Rule:
+Reject if the selected surgeon is not qualified to perform the selected operation.
+
+2. Equipment Rule:
+Reject if the selected theatre does not contain every equipment item required by the selected operation.
+
+3. Theatre Compatibility Rule:
+Reject if the theatre type is not compatible with the operation specialty.
+
+4. Time Conflict Rule:
+Reject if the selected surgeon or theatre has an overlapping booking in the requested time range.
+
+5. ASAP Scheduling Rule:
+For ASAP scheduling, select the earliest time slot in the search window that satisfies rules 1 to 4.
