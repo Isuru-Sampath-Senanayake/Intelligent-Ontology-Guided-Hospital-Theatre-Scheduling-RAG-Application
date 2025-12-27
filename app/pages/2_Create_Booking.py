@@ -71,6 +71,9 @@ Evidence:
 st.set_page_config(page_title="Create Booking", layout="wide")
 st.title("Create Booking")
 
+st.sidebar.header("Evaluation")
+use_ontology = st.sidebar.toggle("Use Ontology Semantic Filter", value=True)
+
 surgeons = load_json(SURGEONS_FILE)
 patients = load_json(PATIENTS_FILE)
 operations = load_json(OPERATIONS_FILE)
@@ -120,10 +123,16 @@ if submit:
 
     reasons: list[str] = []
 
-    if not ontology.surgeon_can_perform(surgeon["surgeon_id"], operation["operation_id"]):
-        reasons.append("Surgeon is not qualified for the selected operation (ontology rule).")
+    if use_ontology:
+        qualified = ontology.surgeon_can_perform(surgeon["surgeon_id"], operation["operation_id"])
+        required_eq = set(ontology.required_equipment(operation["operation_id"]))
+    else:
+        qualified = operation["operation_id"] in surgeon.get("can_perform", [])
+        required_eq = set(operation.get("required_equipment", []))
 
-    required_eq = set(ontology.required_equipment(operation["operation_id"]))
+    if not qualified:
+        reasons.append("Surgeon is not qualified for the selected operation.")
+
     available_eq = set(theatre.get("equipment", []))
     if not required_eq.issubset(available_eq):
         missing = sorted(required_eq - available_eq)

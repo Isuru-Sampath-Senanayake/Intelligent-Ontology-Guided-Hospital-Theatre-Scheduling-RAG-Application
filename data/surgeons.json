@@ -3,7 +3,7 @@
     "surgeon_id": "S001",
     "name": "Dr A",
     "specialties": ["Orthopedic"],
-    "can_perform": ["OP001"],
+    "can_perform": ["OP001", "OP002"],
     "availability": [
       {"day": "Mon", "start": "08:00", "end": "16:00"},
       {"day": "Tue", "start": "08:00", "end": "16:00"},
@@ -23,17 +23,6 @@
       {"day": "Wed", "start": "10:00", "end": "18:00"},
       {"day": "Thu", "start": "10:00", "end": "18:00"},
       {"day": "Fri", "start": "10:00", "end": "18:00"}
-    ]
-  },
-  {
-    "surgeon_id": "S003",
-    "name": "Dr D",
-    "specialties": ["Orthopedic"],
-    "can_perform": ["OP001", "OP003"],
-    "availability": [
-      {"day": "Mon", "start": "08:00", "end": "12:00"},
-      {"day": "Wed", "start": "08:00", "end": "12:00"},
-      {"day": "Fri", "start": "08:00", "end": "12:00"}
     ]
   }
 ]

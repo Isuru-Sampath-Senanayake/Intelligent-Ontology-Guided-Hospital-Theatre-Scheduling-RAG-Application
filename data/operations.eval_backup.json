@@ -3,7 +3,7 @@
     "operation_id": "OP001",
     "name": "Bone Repair",
     "required_specialty": "Orthopedic",
-    "required_equipment": ["OrthoKit"],
+    "required_equipment": ["OrthoKit", "XRayMachine"],
     "duration_minutes": 120
   },
   {
@@ -12,5 +12,12 @@
     "required_specialty": "GeneralSurgery",
     "required_equipment": ["LaparoscopyKit"],
     "duration_minutes": 90
+  },
+  {
+    "operation_id": "OP003",
+    "name": "Arthroscopy",
+    "required_specialty": "Orthopedic",
+    "required_equipment": ["ArthroscopyKit"],
+    "duration_minutes": 60
   }
 ]
