@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 
 import streamlit as st
 
+from app.services.scheduling_service import find_slot_asap, validate_fixed_slot
+
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 SURGEONS_FILE = DATA_DIR / "surgeons.json"
 PATIENTS_FILE = DATA_DIR / "patients.json"
@@ -25,10 +27,6 @@ def parse_dt(date_value, time_str: str) -> datetime:
     return datetime(date_value.year, date_value.month, date_value.day, int(hh), int(mm))
 
 
-def overlaps(a_start: datetime, a_end: datetime, b_start: datetime, b_end: datetime) -> bool:
-    return a_start < b_end and b_start < a_end
-
-
 st.set_page_config(page_title="Create Booking", layout="wide")
 st.title("Create Booking")
 
@@ -43,20 +41,33 @@ patient_by_name = {p["name"]: p for p in patients}
 operation_by_name = {o["name"]: o for o in operations}
 theatre_by_name = {t["name"]: t for t in theatres}
 
+TIME_OPTIONS = [
+    "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
+    "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
+    "14:00", "14:30", "15:00", "15:30",
+]
+
 with st.form("booking_form"):
     col1, col2, col3 = st.columns(3)
 
     with col1:
         patient_name = st.selectbox("Patient", sorted(patient_by_name.keys()))
         operation_name = st.selectbox("Operation", sorted(operation_by_name.keys()))
+
     with col2:
         surgeon_name = st.selectbox("Preferred Surgeon", sorted(surgeon_by_name.keys()))
         theatre_name = st.selectbox("Preferred Theatre", sorted(theatre_by_name.keys()))
+
     with col3:
-        booking_date = st.date_input("Date", value=datetime.now().date() + timedelta(days=1))
-        start_time = st.selectbox("Start time", ["08:00", "08:30", "09:00", "09:30", "10:00",
-                                                "10:30", "11:00", "11:30", "12:00", "12:30",
-                                                "13:00", "13:30", "14:00", "14:30", "15:00", "15:30"])
+        mode = st.radio("Scheduling mode", ["Fixed time", "ASAP within range"], horizontal=True)
+        booking_date = st.date_input("Start date", value=datetime.now().date() + timedelta(days=1))
+
+        if mode == "Fixed time":
+            start_time = st.selectbox("Start time", TIME_OPTIONS)
+            days_range = None
+        else:
+            start_time = None
+            days_range = st.selectbox("Search window (days)", [3, 7, 14], index=2)
 
     submit = st.form_submit_button("Check and Schedule")
 
@@ -66,35 +77,51 @@ if submit:
     surgeon = surgeon_by_name[surgeon_name]
     theatre = theatre_by_name[theatre_name]
 
-    start_dt = parse_dt(booking_date, start_time)
-    end_dt = start_dt + timedelta(minutes=int(operation["duration_minutes"]))
-
-    # Basic checks (semantic filter comes later)
     reasons = []
 
+    # Qualification check (matches your data now)
     if operation["operation_id"] not in surgeon.get("can_perform", []):
         reasons.append("Surgeon is not qualified for the selected operation.")
 
+    # Equipment check
     required_eq = set(operation.get("required_equipment", []))
     available_eq = set(theatre.get("equipment", []))
     if not required_eq.issubset(available_eq):
         missing = sorted(required_eq - available_eq)
         reasons.append(f"Theatre is missing required equipment: {', '.join(missing)}")
 
+    # Theatre type compatibility (simple rule for now)
     if theatre.get("type") != operation.get("required_specialty"):
         reasons.append("Theatre type is not compatible with the operation specialty.")
 
-    for b in bookings:
-        b_start = datetime.fromisoformat(b["start_time"])
-        b_end = datetime.fromisoformat(b["end_time"])
+    duration_minutes = int(operation["duration_minutes"])
+    step_minutes = 30
 
-        if b["surgeon_id"] == surgeon["surgeon_id"] and overlaps(start_dt, end_dt, b_start, b_end):
-            reasons.append("Surgeon has a conflicting booking in that time range.")
-            break
+    if not reasons:
+        if mode == "Fixed time":
+            start_dt = parse_dt(booking_date, start_time)
+            decision = validate_fixed_slot(
+                start_dt=start_dt,
+                duration_minutes=duration_minutes,
+                surgeon=surgeon,
+                theatre=theatre,
+                bookings=bookings,
+            )
+        else:
+            window_start = datetime(booking_date.year, booking_date.month, booking_date.day, 8, 0)
+            window_end = window_start + timedelta(days=int(days_range))
+            decision = find_slot_asap(
+                window_start=window_start,
+                window_end=window_end,
+                step_minutes=step_minutes,
+                duration_minutes=duration_minutes,
+                surgeon=surgeon,
+                theatre=theatre,
+                bookings=bookings,
+            )
 
-        if b["theatre_id"] == theatre["theatre_id"] and overlaps(start_dt, end_dt, b_start, b_end):
-            reasons.append("Theatre has a conflicting booking in that time range.")
-            break
+        if not decision.approved:
+            reasons.extend(decision.reasons)
 
     if reasons:
         st.error("Rejected")
@@ -111,8 +138,8 @@ if submit:
             "surgeon_name": surgeon["name"],
             "theatre_id": theatre["theatre_id"],
             "theatre_name": theatre["name"],
-            "start_time": start_dt.isoformat(timespec="minutes"),
-            "end_time": end_dt.isoformat(timespec="minutes"),
+            "start_time": decision.start_time.isoformat(timespec="minutes"),
+            "end_time": decision.end_time.isoformat(timespec="minutes"),
         }
 
         bookings.append(booking)
